@@ -1,0 +1,19 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "dog-walking-web",
+	"main": ".svelte-kit/cloudflare/_worker.js",
+	"compatibility_date": "2026-10-01",
+	"compatibility_flags": ["nodejs_compat"],
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".svelte-kit/cloudflare"
+	},
+	"observability": { "enabled": true },
+	// Non-secret configuration. Secrets (CLERK_SECRET_KEY) are set with
+	// `wrangler secret put`; PUBLIC_CLERK_PUBLISHABLE_KEY and API_BASE_URL are
+	// plain vars - override them per environment in the dashboard or here.
+	"vars": {
+		"API_BASE_URL": "https://dog-walking-api.example.workers.dev",
+		"PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_replace_me"
+	}
+}

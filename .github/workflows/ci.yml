@@ -1,0 +1,25 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: npm ci
+      - name: Fetch the pinned contracts
+        run: task contracts:fetch
+      - name: Generated types must match the pinned contracts
+        run: task types:check
+      - run: npm run check
+      - run: npx vitest run
+      - run: npm run build
