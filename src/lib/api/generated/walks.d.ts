@@ -228,6 +228,15 @@ export interface operations {
                     "application/json": components["schemas"]["WalkList"];
                 };
             };
+            /** @description Malformed filter - a scheduled_from or scheduled_to that is not a date-time, or a status outside the declared statuses. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
             401: components["responses"]["Unauthenticated"];
         };
     };
@@ -390,6 +399,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Walk"];
+                };
+            };
+            /** @description Invalid completion - notes that are not text, or a body that is not JSON. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
             401: components["responses"]["Unauthenticated"];
