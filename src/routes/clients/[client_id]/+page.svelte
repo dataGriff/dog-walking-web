@@ -65,6 +65,6 @@
 </section>
 
 <h2>Remove</h2>
-<form method="POST" action="?/delete" use:enhance onsubmit={(e) => { if (!confirm(`Remove ${data.client.name} and all their dogs?`)) e.preventDefault(); }}>
+<form method="POST" action="?/delete" use:enhance={({ cancel }) => { if (!confirm(`Remove ${data.client.name} and all their dogs?`)) cancel(); }}>
 	<button class="danger">Remove client and their dogs</button>
 </form>

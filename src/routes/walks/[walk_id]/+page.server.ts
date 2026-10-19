@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { actionFail, api, loadError, str } from '$lib/server/api';
-import { CANCELLATION_REASONS, localInputToIso, type CancellationReason } from '$lib/api';
+import { CANCELLATION_REASONS, readTimeZone, zonedLocalToIso, type CancellationReason } from '$lib/api';
 import type { Actions, PageServerLoad, RequestEvent } from './$types';
 
 export const load: PageServerLoad = async (event) => {
@@ -11,13 +11,15 @@ export const load: PageServerLoad = async (event) => {
 	]);
 	if (walkRes.error || !walkRes.data) loadError(walkRes.response.status, walkRes.error);
 	if (dogsRes.error || !dogsRes.data) loadError(dogsRes.response.status, dogsRes.error);
-	return { walk: walkRes.data, dogs: dogsRes.data.dogs };
+	return { tz: readTimeZone(event.cookies), walk: walkRes.data, dogs: dogsRes.data.dogs };
 };
 
 /** Where to land after a lifecycle action: the caller's page, or this walk. */
 function afterAction(event: RequestEvent): never {
-	const back = event.url.searchParams.get('redirect_to');
-	redirect(303, back && back.startsWith('/') ? back : `/walks/${event.params.walk_id}`);
+	const back = event.url.searchParams.get('redirect_to') ?? '';
+	// Same-origin paths only: '//host' and '/\\host' are protocol-relative URLs.
+	const internal = back.startsWith('/') && !back.startsWith('//') && !back.startsWith('/\\');
+	redirect(303, internal ? back : `/walks/${event.params.walk_id}`);
 }
 
 export const actions: Actions = {
@@ -26,10 +28,17 @@ export const actions: Actions = {
 		const scheduledLocal = str(data, 'scheduled_at');
 		const durationRaw = str(data, 'duration_minutes');
 		const dog_ids = data.getAll('dog_ids').map(String).filter(Boolean);
+		const scheduled_at = scheduledLocal ? zonedLocalToIso(scheduledLocal, readTimeZone(event.cookies)) : undefined;
+		if (scheduled_at === null) {
+			return actionFail(400, { error_code: 'invalid_walk', message: 'Pick a date and time.' }, { form: 'update' });
+		}
+		if (dog_ids.length === 0) {
+			return actionFail(400, { error_code: 'invalid_walk', message: 'Pick at least one dog.' }, { form: 'update' });
+		}
 		const body = {
-			scheduled_at: scheduledLocal ? localInputToIso(scheduledLocal) : undefined,
+			scheduled_at,
 			duration_minutes: durationRaw ? Number(durationRaw) : undefined,
-			dog_ids: dog_ids.length ? dog_ids : undefined,
+			dog_ids,
 			notes: str(data, 'notes')
 		};
 		const { walks } = await api(event);

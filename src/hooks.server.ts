@@ -6,6 +6,9 @@ import { env } from '$env/dynamic/private';
 /** Routes a signed-out visitor may see. Everything else needs a session. */
 const PUBLIC_ROUTES = [/^\/sign-in(\/|$)/, /^\/sign-up(\/|$)/];
 
+// Built once: the handler carries Clerk's options and clients.
+const clerkHandle = withClerkHandler();
+
 const clerk: Handle = ({ event, resolve }) => {
 	if (env.API_DEV_BEARER) {
 		// Local development against an API in test auth mode: no Clerk at all.
@@ -18,7 +21,7 @@ const clerk: Handle = ({ event, resolve }) => {
 		})) as unknown as App.Locals['auth'];
 		return resolve(event);
 	}
-	return withClerkHandler()({ event, resolve });
+	return clerkHandle({ event, resolve });
 };
 
 const guard: Handle = ({ event, resolve }) => {

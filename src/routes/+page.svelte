@@ -1,11 +1,10 @@
 <script lang="ts">
 	import WalkCard from '$lib/components/WalkCard.svelte';
-	import { formatDay, groupByDay, todayKey } from '$lib/api';
+	import { formatDay, groupByDay } from '$lib/api';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-	const today = todayKey();
-	const days = $derived(groupByDay(data.walks));
+	const days = $derived(groupByDay(data.walks, data.tz));
 </script>
 
 <svelte:head><title>Today · Dog Walking</title></svelte:head>
@@ -24,8 +23,8 @@
 {/if}
 
 {#each days as group (group.day)}
-	<div class="day">{group.day === today ? 'Today' : formatDay(group.day)}</div>
+	<div class="day">{group.day === data.today ? 'Today' : formatDay(group.day)}</div>
 	{#each group.items as walk (walk.walk_id)}
-		<WalkCard {walk} dogNames={data.dogNames} />
+		<WalkCard {walk} dogNames={data.dogNames} tz={data.tz} />
 	{/each}
 {/each}

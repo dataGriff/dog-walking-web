@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { CANCELLATION_REASONS, formatDateTime, isoToLocalInput } from '$lib/api';
+	import { CANCELLATION_REASONS, formatDateTime, isoToZonedLocal } from '$lib/api';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -16,7 +16,7 @@
 
 <p><a href="/walks">← Walks</a></p>
 <div class="row between">
-	<h1>{formatDateTime(walk.scheduled_at)}</h1>
+	<h1>{formatDateTime(walk.scheduled_at, undefined, data.tz)}</h1>
 	<span class="status {walk.status}">{walk.status.replace('_', ' ')}</span>
 </div>
 {#if form?.updated}<p class="meta">Saved.</p>{/if}
@@ -26,9 +26,9 @@
 	<div>{walk.duration_minutes} minutes with {walk.dog_ids.map((id) => dogNames[id] ?? 'an unknown dog').join(', ')}</div>
 	{#if walk.notes}<p>{walk.notes}</p>{/if}
 	<div class="meta">
-		{#if walk.started_at}Started {formatDateTime(walk.started_at)}.{/if}
-		{#if walk.completed_at}Completed {formatDateTime(walk.completed_at)}.{/if}
-		{#if walk.cancelled_at}Cancelled {formatDateTime(walk.cancelled_at)}{#if reasonLabel}: {reasonLabel}{/if}.{/if}
+		{#if walk.started_at}Started {formatDateTime(walk.started_at, undefined, data.tz)}.{/if}
+		{#if walk.completed_at}Completed {formatDateTime(walk.completed_at, undefined, data.tz)}.{/if}
+		{#if walk.cancelled_at}Cancelled {formatDateTime(walk.cancelled_at, undefined, data.tz)}{#if reasonLabel}: {reasonLabel}{/if}.{/if}
 	</div>
 	{#if open}
 		<div class="actions">
@@ -44,7 +44,7 @@
 	<section class="card">
 		<h3>Reschedule</h3>
 		<form class="stack" method="POST" action="?/update" use:enhance>
-			<label>When <input type="datetime-local" name="scheduled_at" value={isoToLocalInput(walk.scheduled_at)} /></label>
+			<label>When <input type="datetime-local" name="scheduled_at" value={isoToZonedLocal(walk.scheduled_at, data.tz)} /></label>
 			<label>Duration (minutes) <input type="number" name="duration_minutes" min="1" value={walk.duration_minutes} /></label>
 			<fieldset>
 				<legend>Dogs</legend>
@@ -62,7 +62,7 @@
 	<section class="card">
 		<h3>Complete</h3>
 		<form class="stack" method="POST" action="?/complete" use:enhance>
-			<label>How did it go? <textarea name="notes" placeholder="Optional notes">{walk.status === 'in_progress' ? '' : ''}</textarea></label>
+			<label>How did it go? <textarea name="notes" placeholder="Optional notes"></textarea></label>
 			<div class="actions"><button>Mark completed</button></div>
 		</form>
 	</section>

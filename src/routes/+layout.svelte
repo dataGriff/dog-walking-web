@@ -1,11 +1,23 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/state';
+	import { invalidateAll } from '$app/navigation';
+	import { browser } from '$app/environment';
 	import { ClerkProvider, UserButton } from 'svelte-clerk';
 	import type { Snippet } from 'svelte';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
+
+	// Tell the server the walker's zone once; loads then render in it, so the
+	// times the browser hydrates match what was served.
+	$effect(() => {
+		if (!browser) return;
+		const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+		if (!zone || zone === data.tz) return;
+		document.cookie = `tz=${encodeURIComponent(zone)}; path=/; max-age=31536000; SameSite=Lax`;
+		invalidateAll();
+	});
 
 	const nav = [
 		{ href: '/', label: 'Today' },

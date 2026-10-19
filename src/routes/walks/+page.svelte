@@ -4,7 +4,7 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-	const days = $derived(groupByDay(data.walks));
+	const days = $derived(groupByDay(data.walks, data.tz));
 	const link = (week: string) => `/walks?week=${week}${data.status ? `&status=${data.status}` : ''}`;
 </script>
 
@@ -34,6 +34,6 @@
 {#each days as group (group.day)}
 	<div class="day">{formatDay(group.day)}</div>
 	{#each group.items as walk (walk.walk_id)}
-		<WalkCard {walk} dogNames={data.dogNames} />
+		<WalkCard {walk} dogNames={data.dogNames} tz={data.tz} />
 	{/each}
 {/each}

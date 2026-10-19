@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { formatTime, type Walk } from '$lib/api';
 
-	let { walk, dogNames = {} }: { walk: Walk; dogNames?: Record<string, string> } = $props();
+	let { walk, dogNames = {}, tz }: { walk: Walk; dogNames?: Record<string, string>; tz: string } = $props();
 
 	const dogs = $derived(walk.dog_ids.map((id) => dogNames[id] ?? 'Unknown dog').join(', '));
 	const back = $derived(encodeURIComponent(page.url.pathname + page.url.search));
@@ -11,7 +11,7 @@
 
 <article class="card">
 	<div class="row between">
-		<h3><a href="/walks/{walk.walk_id}">{formatTime(walk.scheduled_at)} · {dogs}</a></h3>
+		<h3><a href="/walks/{walk.walk_id}">{formatTime(walk.scheduled_at, undefined, tz)} · {dogs}</a></h3>
 		<span class="status {walk.status}">{walk.status.replace('_', ' ')}</span>
 	</div>
 	<div class="meta">

@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { actionFail, api, loadError, str } from '$lib/server/api';
-import { localInputToIso } from '$lib/api';
+import { readTimeZone, zonedLocalToIso } from '$lib/api';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
@@ -23,12 +23,13 @@ export const actions: Actions = {
 		const dog_ids = data.getAll('dog_ids').map(String).filter(Boolean);
 		const notes = str(data, 'notes');
 		const values = { scheduled_at: scheduledLocal, duration_minutes: String(duration), dog_ids, notes };
-		if (!scheduledLocal || Number.isNaN(new Date(scheduledLocal).getTime())) {
+		const scheduled_at = zonedLocalToIso(scheduledLocal, readTimeZone(event.cookies));
+		if (!scheduled_at) {
 			return actionFail(400, { error_code: 'invalid_walk', message: 'Pick a date and time.' }, values);
 		}
 		const { walks } = await api(event);
 		const res = await walks.POST('/walks', {
-			body: { scheduled_at: localInputToIso(scheduledLocal), duration_minutes: duration, dog_ids, notes }
+			body: { scheduled_at, duration_minutes: duration, dog_ids, notes }
 		});
 		if (res.error || !res.data) return actionFail(res.response.status, res.error, values);
 		redirect(303, `/walks/${res.data.walk_id}`);
