@@ -28,8 +28,44 @@ export function groupByDay<T extends { scheduled_at: string }>(
 	return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([day, items]) => ({ day, items }));
 }
 
+/** The walker's locale from an Accept-Language header: the first tag the
+ * runtime recognises, else `fallback`. Quality values are honoured. */
+export function resolveLocale(header: string | null | undefined, fallback = 'en-GB'): string {
+	const tags = (header ?? '')
+		.split(',')
+		.map((part) => {
+			const [tag, ...params] = part.trim().split(';');
+			const q = params.map((p) => p.trim()).find((p) => p.startsWith('q='));
+			return { tag: tag.trim(), q: q ? Number(q.slice(2)) : 1 };
+		})
+		.filter((t) => t.tag && t.tag !== '*' && !Number.isNaN(t.q) && t.q > 0)
+		.sort((a, b) => b.q - a.q);
+	for (const { tag } of tags) {
+		try {
+			const [canonical] = Intl.getCanonicalLocales(tag);
+			// A bare "en" says nothing about date order; prefer the fallback's region.
+			if (canonical === 'en') return fallback.startsWith('en') ? fallback : 'en-GB';
+			if (canonical && Intl.DateTimeFormat.supportedLocalesOf([canonical]).length) return canonical;
+		} catch {
+			// not a valid tag; try the next
+		}
+	}
+	return fallback;
+}
+
+/** Whether the locale writes times on a 24-hour clock. */
+export function uses24h(locale?: string): boolean {
+	const cycle = new Intl.DateTimeFormat(locale, { hour: 'numeric' }).resolvedOptions().hourCycle;
+	return cycle === 'h23' || cycle === 'h24';
+}
+
+/** A time of day: "09:00" in 24-hour locales, "9:00 AM" in 12-hour ones. */
 export function formatTime(iso: string, locale?: string, timeZone?: string): string {
-	return new Intl.DateTimeFormat(locale, { timeZone, hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+	return new Intl.DateTimeFormat(locale, {
+		timeZone,
+		hour: uses24h(locale) ? '2-digit' : 'numeric',
+		minute: '2-digit'
+	}).format(new Date(iso));
 }
 
 export function formatDay(dayKey: string, locale?: string): string {
@@ -48,9 +84,75 @@ export function formatDateTime(iso: string, locale?: string, timeZone?: string):
 		weekday: 'short',
 		day: 'numeric',
 		month: 'short',
-		hour: 'numeric',
+		hour: uses24h(locale) ? '2-digit' : 'numeric',
 		minute: '2-digit'
 	}).format(new Date(iso));
+}
+
+/** "Thu 22 Oct" for a day key. */
+export function formatShortDay(dayKey: string, locale?: string): string {
+	const [y, m, d] = dayKey.split('-').map(Number);
+	return new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(
+		new Date(Date.UTC(y, m - 1, d))
+	);
+}
+
+/** "19 – 25 Oct", "28 Sep – 4 Oct", "29 Dec 2025 – 4 Jan 2026" for the week starting `mondayKey`. */
+export function formatWeekRange(mondayKey: string, locale?: string): string {
+	const [y, m, d] = mondayKey.split('-').map(Number);
+	const start = new Date(Date.UTC(y, m - 1, d));
+	const end = new Date(Date.UTC(y, m - 1, d + 6));
+	const sameYear = start.getUTCFullYear() === end.getUTCFullYear();
+	const fmt = new Intl.DateTimeFormat(locale, {
+		day: 'numeric',
+		month: 'short',
+		...(sameYear ? {} : { year: 'numeric' }),
+		timeZone: 'UTC'
+	});
+	return fmt.formatRange(start, end);
+}
+
+/** A birth date as "2 Sep 2019". */
+export function formatBirthDate(dob: string, locale?: string): string {
+	const [y, m, d] = dob.split('-').map(Number);
+	return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(
+		new Date(Date.UTC(y, m - 1, d))
+	);
+}
+
+/** A dog's age on `today` (both YYYY-MM-DD): "7 yrs", "1 yr", "5 mos", "3 wks", "newborn". */
+export function formatAge(dob: string, today: string): string {
+	const [by, bm, bd] = dob.split('-').map(Number);
+	const [ty, tm, td] = today.split('-').map(Number);
+	let months = (ty - by) * 12 + (tm - bm);
+	if (td < bd) months -= 1;
+	if (months >= 12) {
+		const years = Math.floor(months / 12);
+		return `${years} ${years === 1 ? 'yr' : 'yrs'}`;
+	}
+	if (months >= 1) return `${months} ${months === 1 ? 'mo' : 'mos'}`;
+	const days = Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(by, bm - 1, bd)) / 86_400_000);
+	if (days < 0) return 'not born yet';
+	const weeks = Math.floor(days / 7);
+	return weeks >= 1 ? `${weeks} ${weeks === 1 ? 'wk' : 'wks'}` : 'newborn';
+}
+
+/** Minutes as "45 min", "1h", "2h 15m". */
+export function formatDuration(minutes: number): string {
+	if (minutes < 60) return `${minutes} min`;
+	const h = Math.floor(minutes / 60);
+	const m = minutes % 60;
+	return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+/** Elapsed milliseconds as a clock: "4:05", "32:10", "1:02:10". */
+export function formatClock(ms: number): string {
+	const total = Math.max(0, Math.floor(ms / 1000));
+	const h = Math.floor(total / 3600);
+	const m = Math.floor((total % 3600) / 60);
+	const s = total % 60;
+	const pad = (n: number) => String(n).padStart(2, '0');
+	return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
 /** A calendar day (YYYY-MM-DD) that actually exists, or null. Rejects

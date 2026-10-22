@@ -5,6 +5,9 @@
 	import { browser } from '$app/environment';
 	import { ClerkProvider, UserButton } from 'svelte-clerk';
 	import type { Snippet } from 'svelte';
+	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
+	import BrandMark from '$lib/ui/BrandMark.svelte';
+	import Toaster from '$lib/ui/Toaster.svelte';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
@@ -23,13 +26,15 @@
 		invalidateAll();
 	});
 
-	const nav = [
-		{ href: '/', label: 'Today' },
-		{ href: '/walks', label: 'Walks' },
-		{ href: '/clients', label: 'Clients' }
+	const nav: { href: string; label: string; icon: IconName }[] = [
+		{ href: '/', label: 'Today', icon: 'today' },
+		{ href: '/walks', label: 'Walks', icon: 'calendar' },
+		{ href: '/clients', label: 'Clients', icon: 'users' }
 	];
 	const current = (href: string) =>
-		href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
+		href === '/'
+			? page.url.pathname === '/'
+			: page.url.pathname.startsWith(href) || (href === '/clients' && page.url.pathname.startsWith('/dogs'));
 	// SSR auth state from buildClerkProps; the provider reads it at runtime but
 	// its typed props omit it, so it goes in by spread.
 	const clerkProps = $derived(
@@ -39,16 +44,18 @@
 
 {#snippet shell()}
 	<header class="topbar">
-		<a class="brand" href="/">🐾 Dog Walking</a>
+		<a class="brand" href="/"><BrandMark /> Dog Walking</a>
 		{#if data.signedIn}
-			<nav aria-label="Primary">
+			<nav class="primary-nav" aria-label="Primary">
 				{#each nav as item (item.href)}
-					<a href={item.href} aria-current={current(item.href) ? 'page' : undefined}>{item.label}</a>
+					<a href={item.href} aria-current={current(item.href) ? 'page' : undefined}>
+						<Icon name={item.icon} />{item.label}
+					</a>
 				{/each}
 			</nav>
 			<div class="user">
 				{#if data.devBearer}
-					<span class="pill" title="API_DEV_BEARER is set">dev</span>
+					<span class="pill" title="API_DEV_BEARER is set: signed in without Clerk">dev</span>
 				{:else}
 					<UserButton />
 				{/if}
@@ -58,6 +65,7 @@
 	<main>
 		{@render children()}
 	</main>
+	<Toaster />
 {/snippet}
 
 {#if data.devBearer}

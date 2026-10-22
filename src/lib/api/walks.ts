@@ -12,9 +12,9 @@ export const WALK_STATUSES: readonly WalkStatus[] = ['scheduled', 'in_progress',
 /** The closed vocabulary the contract declares, with the walker-facing label. */
 export const CANCELLATION_REASONS: readonly { value: CancellationReason; label: string }[] = [
 	{ value: 'client_request', label: 'Client asked to cancel' },
-	{ value: 'walker_unavailable', label: 'I could not make it' },
+	{ value: 'walker_unavailable', label: 'I can’t make it' },
 	{ value: 'bad_weather', label: 'Bad weather' },
-	{ value: 'dog_unwell', label: 'Dog unwell' }
+	{ value: 'dog_unwell', label: 'A dog is unwell' }
 ];
 
 export type WalksApi = ReturnType<typeof createWalksApi>;

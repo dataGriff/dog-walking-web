@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayWindow, groupByDay, isoToZonedLocal, localDayKey, parseDayKey, readTimeZone, shiftDay, weekBounds, weekStartKey, zonedLocalToIso } from './dates';
+import { dayWindow, formatAge, formatBirthDate, formatClock, formatDuration, formatShortDay, formatTime, formatWeekRange, groupByDay, isoToZonedLocal, localDayKey, parseDayKey, readTimeZone, resolveLocale, shiftDay, uses24h, weekBounds, weekStartKey, zonedLocalToIso } from './dates';
 
 describe('localDayKey', () => {
 	it('places an instant on its local calendar day', () => {
@@ -112,5 +112,69 @@ describe('parseDayKey and weekStartKey', () => {
 		expect(weekStartKey('2026-11-05')).toBe('2026-11-02');
 		expect(weekStartKey('2026-11-02')).toBe('2026-11-02');
 		expect(weekStartKey('2026-11-08')).toBe('2026-11-02');
+	});
+});
+
+describe('resolveLocale', () => {
+	it('takes the highest-quality recognised tag', () => {
+		expect(resolveLocale('en-US,en;q=0.9')).toBe('en-US');
+		expect(resolveLocale('fr;q=0.5, cy-GB;q=0.9')).toBe('cy-GB');
+	});
+	it('reads a bare "en" as British English and falls back when empty or junk', () => {
+		expect(resolveLocale('en')).toBe('en-GB');
+		expect(resolveLocale(null)).toBe('en-GB');
+		expect(resolveLocale('*')).toBe('en-GB');
+		expect(resolveLocale('not a tag!!')).toBe('en-GB');
+	});
+});
+
+describe('formatTime', () => {
+	const iso = '2026-10-22T08:05:00Z';
+	it('uses a 24-hour clock with a leading zero where the locale does', () => {
+		expect(uses24h('en-GB')).toBe(true);
+		expect(formatTime(iso, 'en-GB', 'Europe/London')).toBe('09:05');
+	});
+	it('keeps 12-hour locales on a 12-hour clock', () => {
+		expect(uses24h('en-US')).toBe(false);
+		expect(formatTime(iso, 'en-US', 'Europe/London')).toMatch(/^9:05\s?AM$/);
+	});
+});
+
+describe('formatAge', () => {
+	it('gives years, months, weeks', () => {
+		expect(formatAge('2019-09-02', '2026-10-22')).toBe('7 yrs');
+		expect(formatAge('2025-10-22', '2026-10-22')).toBe('1 yr');
+		expect(formatAge('2026-05-14', '2026-10-22')).toBe('5 mos');
+		expect(formatAge('2026-10-01', '2026-10-22')).toBe('3 wks');
+		expect(formatAge('2026-10-20', '2026-10-22')).toBe('newborn');
+	});
+	it('handles a birthday today and 29 February', () => {
+		expect(formatAge('2020-10-22', '2026-10-22')).toBe('6 yrs');
+		expect(formatAge('2026-02-28', '2027-02-27')).toBe('11 mos');
+		expect(formatAge('2024-02-29', '2025-02-28')).toBe('11 mos');
+		expect(formatAge('2024-02-29', '2025-03-01')).toBe('1 yr');
+	});
+});
+
+describe('formatDuration, formatClock, formatWeekRange, formatBirthDate, formatShortDay', () => {
+	it('formats durations', () => {
+		expect(formatDuration(45)).toBe('45 min');
+		expect(formatDuration(60)).toBe('1h');
+		expect(formatDuration(135)).toBe('2h 15m');
+	});
+	it('formats elapsed time as a clock', () => {
+		expect(formatClock(245_000)).toBe('4:05');
+		expect(formatClock(1_930_000)).toBe('32:10');
+		expect(formatClock(3_730_000)).toBe('1:02:10');
+		expect(formatClock(-5)).toBe('0:00');
+	});
+	it('formats week ranges within and across months and years', () => {
+		expect(formatWeekRange('2026-10-19', 'en-GB')).toMatch(/^19\s?–\s?25 Oct$/);
+		expect(formatWeekRange('2026-09-28', 'en-GB')).toMatch(/^28 Sept?\s?–\s?4 Oct$/);
+		expect(formatWeekRange('2025-12-29', 'en-GB')).toMatch(/2025.*2026/);
+	});
+	it('formats birth dates and short days', () => {
+		expect(formatBirthDate('2019-09-02', 'en-GB')).toMatch(/^2 Sept? 2019$/);
+		expect(formatShortDay('2026-10-22', 'en-GB')).toBe('Thu 22 Oct');
 	});
 });

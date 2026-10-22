@@ -2,6 +2,7 @@ import { redirect, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { withClerkHandler } from 'svelte-clerk/server';
 import { env } from '$env/dynamic/private';
+import { resolveLocale } from '$lib/api';
 
 /** Routes a signed-out visitor may see. Everything else needs a session. */
 const PUBLIC_ROUTES = [/^\/sign-in(\/|$)/, /^\/sign-up(\/|$)/];
@@ -38,4 +39,14 @@ const guard: Handle = ({ event, resolve }) => {
 	return resolve(event);
 };
 
-export const handle = sequence(clerk, guard);
+/** `<html lang>` per request from Accept-Language (en-GB when absent): the
+ * document language screen readers pronounce and browsers spell-check in.
+ * Native date and time inputs are not driven by it - browsers format those
+ * in their own (operating-system) locale - so every date the app writes
+ * itself goes through `Intl` with the same resolved locale. */
+const lang: Handle = ({ event, resolve }) => {
+	const locale = resolveLocale(event.request.headers.get('accept-language'));
+	return resolve(event, { transformPageChunk: ({ html }) => html.replace('%lang%', locale) });
+};
+
+export const handle = sequence(lang, clerk, guard);
