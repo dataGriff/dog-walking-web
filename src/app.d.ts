@@ -11,6 +11,8 @@ declare global {
 		interface Platform {
 			env?: {
 				API_BASE_URL?: string;
+				API_CLIENTS_URL?: string;
+				API_WALKS_URL?: string;
 				API_DEV_BEARER?: string;
 				CLERK_SECRET_KEY?: string;
 				PUBLIC_CLERK_PUBLISHABLE_KEY?: string;

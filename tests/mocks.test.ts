@@ -3,6 +3,7 @@
  * Microcks REST mocks (`task -d .contracts/<service> mocks:load SERVICE=...`).
  * Runs only when MOCKS_BASE_URL points at the stack, e.g.
  * MOCKS_BASE_URL=http://localhost:8585/rest npx vitest run tests
+ * (the CI `mocks` job does exactly this).
  */
 import { describe, expect, it } from 'vitest';
 import { createClientsApi } from '../src/lib/api/clients';
@@ -15,6 +16,7 @@ const walksBase = `${base}/Walks+API/1.0.0`;
 // Fixture ids from the spec repo's mocks/*.rest.examples.yaml
 const ALICE = '11111111-1111-4111-8111-111111111111';
 const BISCUIT = '22222222-2222-4222-8222-222222222222';
+const REX = '88888888-8888-4888-8888-888888888888';
 const WALK = '33333333-3333-4333-8333-333333333333';
 const MISSING = '99999999-9999-4999-8999-999999999999';
 
@@ -44,6 +46,16 @@ describe.skipIf(!base)('generated clients against the pinned mocks', () => {
 		const walk = await walks.GET('/walks/{walk_id}', { params: { path: { walk_id: WALK } } });
 		expect(walk.data?.status).toBe('scheduled');
 		expect(walk.data?.dog_ids).toContain(BISCUIT);
+	});
+
+	it('lists every dog and the week of walks the screens render', async () => {
+		const dogs = await clients.GET('/dogs');
+		expect(dogs.response.status).toBe(200);
+		expect(dogs.data?.dogs.map((d) => d.dog_id)).toEqual(expect.arrayContaining([BISCUIT, REX]));
+
+		const list = await walks.GET('/walks');
+		expect(list.response.status).toBe(200);
+		expect(list.data?.walks.some((w) => w.walk_id === WALK)).toBe(true);
 	});
 
 	it('schedules a walk and reads the contract shape back', async () => {

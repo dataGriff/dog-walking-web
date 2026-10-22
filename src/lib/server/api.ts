@@ -4,20 +4,23 @@ import { env } from '$env/dynamic/private';
 import { createClientsApi, createWalksApi, describeProblem } from '$lib/api';
 
 /**
- * Per-request API access. The token is the walker's Clerk session token,
+ * Per-request API access, one typed client per service. The token is the walker's Clerk session token,
  * or the literal `API_DEV_BEARER` when developing against an API in test
  * auth mode. `fetch` is SvelteKit's, so server-side calls are traced and
  * relative URLs would resolve.
  */
 export async function api(event: RequestEvent) {
-	const baseUrl = env.API_BASE_URL;
-	if (!baseUrl) error(500, 'API_BASE_URL is not configured');
+	// One URL for both services (the API worker serves both), or one each:
+	// the spec repo's Microcks mocks serve every service at its own path.
+	const clientsUrl = env.API_CLIENTS_URL || env.API_BASE_URL;
+	const walksUrl = env.API_WALKS_URL || env.API_BASE_URL;
+	if (!clientsUrl || !walksUrl) error(500, 'API_BASE_URL (or API_CLIENTS_URL and API_WALKS_URL) is not configured');
 	// Truthiness, as in hooks.server.ts: an empty API_DEV_BEARER means off.
 	const token = env.API_DEV_BEARER || (await event.locals.auth().getToken());
 	if (!token) error(401, 'No session');
 	return {
-		clients: createClientsApi(baseUrl, token, event.fetch),
-		walks: createWalksApi(baseUrl, token, event.fetch)
+		clients: createClientsApi(clientsUrl, token, event.fetch),
+		walks: createWalksApi(walksUrl, token, event.fetch)
 	};
 }
 
