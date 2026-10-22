@@ -12,7 +12,8 @@ import { createClientsApi, createWalksApi, describeProblem } from '$lib/api';
 export async function api(event: RequestEvent) {
 	const baseUrl = env.API_BASE_URL;
 	if (!baseUrl) error(500, 'API_BASE_URL is not configured');
-	const token = env.API_DEV_BEARER ?? (await event.locals.auth().getToken());
+	// Truthiness, as in hooks.server.ts: an empty API_DEV_BEARER means off.
+	const token = env.API_DEV_BEARER || (await event.locals.auth().getToken());
 	if (!token) error(401, 'No session');
 	return {
 		clients: createClientsApi(baseUrl, token, event.fetch),
@@ -38,4 +39,11 @@ export function str(data: FormData, key: string): string | undefined {
 	if (typeof v !== 'string') return undefined;
 	const trimmed = v.trim();
 	return trimmed === '' ? undefined : trimmed;
+}
+
+/** A field for a PATCH body: undefined when the form did not send it (left
+ * unchanged), "" when it was emptied (the API clears it), else trimmed. */
+export function patchField(data: FormData, key: string): string | undefined {
+	const v = data.get(key);
+	return typeof v === 'string' ? v.trim() : undefined;
 }

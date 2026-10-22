@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { actionFail, api, loadError, str } from '$lib/server/api';
+import { actionFail, api, loadError, patchField, str } from '$lib/server/api';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
@@ -17,13 +17,18 @@ export const load: PageServerLoad = async (event) => {
 export const actions: Actions = {
 	update: async (event) => {
 		const data = await event.request.formData();
+		// Emptied optional fields go as "" so the API clears them; an emptied
+		// name is refused here rather than silently kept.
 		const body = {
-			name: str(data, 'name'),
-			email: str(data, 'email'),
-			phone: str(data, 'phone'),
-			address: str(data, 'address'),
-			notes: str(data, 'notes')
+			name: patchField(data, 'name'),
+			email: patchField(data, 'email'),
+			phone: patchField(data, 'phone'),
+			address: patchField(data, 'address'),
+			notes: patchField(data, 'notes')
 		};
+		if (body.name === '') {
+			return actionFail(400, { error_code: 'invalid_client', message: 'Name is required.' }, { form: 'update', ...body });
+		}
 		const { clients } = await api(event);
 		const res = await clients.PATCH('/clients/{client_id}', {
 			params: { path: { client_id: event.params.client_id } },

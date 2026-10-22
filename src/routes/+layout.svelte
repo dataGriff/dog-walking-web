@@ -10,11 +10,15 @@
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
 	// Tell the server the walker's zone once; loads then render in it, so the
-	// times the browser hydrates match what was served.
+	// times the browser hydrates match what was served. At most one reload per
+	// page load: if the server still answers with another zone (one it cannot
+	// format in), the page stays on that zone rather than reloading forever.
+	let tzSynced = false;
 	$effect(() => {
-		if (!browser) return;
+		if (!browser || tzSynced) return;
 		const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 		if (!zone || zone === data.tz) return;
+		tzSynced = true;
 		document.cookie = `tz=${encodeURIComponent(zone)}; path=/; max-age=31536000; SameSite=Lax`;
 		invalidateAll();
 	});

@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
-import { actionFail, api, loadError, str } from '$lib/server/api';
+import { actionFail, api, loadError, patchField, str } from '$lib/server/api';
+import { safeRedirectPath } from '$lib/server/redirect';
 import { CANCELLATION_REASONS, readTimeZone, zonedLocalToIso, type CancellationReason } from '$lib/api';
 import type { Actions, PageServerLoad, RequestEvent } from './$types';
 
@@ -16,10 +17,8 @@ export const load: PageServerLoad = async (event) => {
 
 /** Where to land after a lifecycle action: the caller's page, or this walk. */
 function afterAction(event: RequestEvent): never {
-	const back = event.url.searchParams.get('redirect_to') ?? '';
-	// Same-origin paths only: '//host' and '/\\host' are protocol-relative URLs.
-	const internal = back.startsWith('/') && !back.startsWith('//') && !back.startsWith('/\\');
-	redirect(303, internal ? back : `/walks/${event.params.walk_id}`);
+	const back = safeRedirectPath(event.url.searchParams.get('redirect_to'), event.url);
+	redirect(303, back ?? `/walks/${event.params.walk_id}`);
 }
 
 export const actions: Actions = {
@@ -39,7 +38,8 @@ export const actions: Actions = {
 			scheduled_at,
 			duration_minutes: durationRaw ? Number(durationRaw) : undefined,
 			dog_ids,
-			notes: str(data, 'notes')
+			// Emptied notes are sent as "" so the API clears them.
+			notes: patchField(data, 'notes')
 		};
 		const { walks } = await api(event);
 		const res = await walks.PATCH('/walks/{walk_id}', { params: { path: { walk_id: event.params.walk_id } }, body });

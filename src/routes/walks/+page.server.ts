@@ -1,12 +1,11 @@
 import { api, loadError } from '$lib/server/api';
-import { WALK_STATUSES, readTimeZone, shiftDay, todayKey, weekBounds, type WalkStatus } from '$lib/api';
+import { WALK_STATUSES, parseDayKey, readTimeZone, todayKey, weekBounds, weekStartKey, type WalkStatus } from '$lib/api';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
 	const tz = readTimeZone(event.cookies);
-	const day = /^\d{4}-\d{2}-\d{2}$/.test(event.url.searchParams.get('week') ?? '')
-		? event.url.searchParams.get('week')!
-		: todayKey(tz);
+	// A ?week that is not a real day (2026-13-01) falls back to this week.
+	const day = parseDayKey(event.url.searchParams.get('week')) ?? todayKey(tz);
 	const statusParam = event.url.searchParams.get('status') ?? '';
 	const status = (WALK_STATUSES as readonly string[]).includes(statusParam) ? (statusParam as WalkStatus) : undefined;
 	const { from, to } = weekBounds(day, tz);
@@ -22,7 +21,7 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		tz,
 		day,
-		weekStart: shiftDay(day, -((new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7)),
+		weekStart: weekStartKey(day),
 		status: status ?? '',
 		walks: walksRes.data.walks,
 		dogNames: Object.fromEntries(dogsRes.data.dogs.map((d) => [d.dog_id, d.name]))

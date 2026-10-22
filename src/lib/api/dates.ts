@@ -53,13 +53,27 @@ export function formatDateTime(iso: string, locale?: string, timeZone?: string):
 	}).format(new Date(iso));
 }
 
+/** A calendar day (YYYY-MM-DD) that actually exists, or null. Rejects
+ * shapes that only look right, like 2026-13-01 or 2026-02-30. */
+export function parseDayKey(value: string | null | undefined): string | null {
+	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value ?? '');
+	if (!m) return null;
+	const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+	const date = new Date(Date.UTC(y, mo - 1, d));
+	return date.getUTCFullYear() === y && date.getUTCMonth() === mo - 1 && date.getUTCDate() === d ? m[0] : null;
+}
+
+/** The Monday (YYYY-MM-DD) of the week containing a valid `dayKey`. */
+export function weekStartKey(dayKey: string): string {
+	const [y, m, d] = dayKey.split('-').map(Number);
+	const dow = (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7; // Monday = 0
+	return shiftDay(dayKey, -dow);
+}
+
 /** Monday 00:00 of the week containing `dayKey`, and the following Monday,
  * as UTC instants - midnight in `timeZone` (UTC when not given). */
 export function weekBounds(dayKey: string, timeZone = 'UTC'): { from: string; to: string } {
-	const [y, m, d] = dayKey.split('-').map(Number);
-	const date = new Date(Date.UTC(y, m - 1, d));
-	const dow = (date.getUTCDay() + 6) % 7; // Monday = 0
-	const monday = shiftDay(dayKey, -dow);
+	const monday = weekStartKey(dayKey);
 	const next = shiftDay(monday, 7);
 	return { from: zonedLocalToIso(`${monday}T00:00`, timeZone)!, to: zonedLocalToIso(`${next}T00:00`, timeZone)! };
 }
@@ -83,12 +97,16 @@ export function todayKey(timeZone?: string): string {
 }
 
 /** The IANA zone to use for a request: the `tz` cookie the browser set when
- * it is a zone this runtime knows, else UTC. */
+ * this runtime can format in it, else UTC. Formatting, not a lookup in
+ * `Intl.supportedValuesOf`, decides: that list carries only canonical ICU
+ * names, so aliases browsers report (Asia/Kolkata, Europe/Kyiv) are absent
+ * from it yet format fine. */
 export function readTimeZone(cookies: { get(name: string): string | undefined }): string {
 	const tz = cookies.get('tz');
 	if (!tz) return 'UTC';
 	try {
-		return Intl.supportedValuesOf('timeZone').includes(tz) || tz === 'UTC' ? tz : 'UTC';
+		new Intl.DateTimeFormat('en-US', { timeZone: tz });
+		return tz;
 	} catch {
 		return 'UTC';
 	}

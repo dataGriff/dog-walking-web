@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayWindow, groupByDay, isoToZonedLocal, localDayKey, readTimeZone, shiftDay, weekBounds, zonedLocalToIso } from './dates';
+import { dayWindow, groupByDay, isoToZonedLocal, localDayKey, parseDayKey, readTimeZone, shiftDay, weekBounds, weekStartKey, zonedLocalToIso } from './dates';
 
 describe('localDayKey', () => {
 	it('places an instant on its local calendar day', () => {
@@ -91,5 +91,26 @@ describe('readTimeZone', () => {
 		expect(readTimeZone(cookies('Europe/London'))).toBe('Europe/London');
 		expect(readTimeZone(cookies('Mars/Olympus_Mons'))).toBe('UTC');
 		expect(readTimeZone(cookies(undefined))).toBe('UTC');
+	});
+	it('accepts the aliases browsers report, not only canonical ICU names', () => {
+		expect(readTimeZone(cookies('Asia/Kolkata'))).toBe('Asia/Kolkata');
+		expect(readTimeZone(cookies('Europe/Kyiv'))).toBe('Europe/Kyiv');
+		expect(readTimeZone(cookies('Asia/Calcutta'))).toBe('Asia/Calcutta');
+		expect(readTimeZone(cookies('Not/AZone'))).toBe('UTC');
+	});
+});
+
+describe('parseDayKey and weekStartKey', () => {
+	it('accepts real days only', () => {
+		expect(parseDayKey('2026-11-05')).toBe('2026-11-05');
+		expect(parseDayKey('2026-13-01')).toBeNull();
+		expect(parseDayKey('2026-02-30')).toBeNull();
+		expect(parseDayKey('next-week')).toBeNull();
+		expect(parseDayKey(null)).toBeNull();
+	});
+	it('finds the Monday of the week', () => {
+		expect(weekStartKey('2026-11-05')).toBe('2026-11-02');
+		expect(weekStartKey('2026-11-02')).toBe('2026-11-02');
+		expect(weekStartKey('2026-11-08')).toBe('2026-11-02');
 	});
 });
