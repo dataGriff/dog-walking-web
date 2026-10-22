@@ -46,7 +46,7 @@ export interface paths {
         post?: never;
         /**
          * Remove a client
-         * @description Removes a client and every dog that belongs to them. Walks already recorded against those dogs are history and are not touched.
+         * @description Removes a client and every dog that belongs to them. A client whose dog is booked on an open walk (scheduled or in progress) is not removed: complete or cancel that walk first. Closed walks are history and are not touched.
          */
         delete: operations["deleteClient"];
         options?: never;
@@ -100,7 +100,7 @@ export interface paths {
         post?: never;
         /**
          * Remove a dog
-         * @description Removes a dog. Walks already recorded against it are history and are not touched.
+         * @description Removes a dog. A dog booked on an open walk (scheduled or in progress) is not removed: complete or cancel that walk first. Closed walks are history and are not touched.
          */
         delete: operations["deleteDog"];
         options?: never;
@@ -145,10 +145,10 @@ export interface components {
             address?: string;
             notes?: string;
         };
+        /** @description Fields left out are unchanged. An empty string clears an optional field, which is then absent from the client. */
         UpdateClientRequest: {
             name?: string;
-            /** Format: email */
-            email?: string;
+            email?: string | unknown | unknown;
             phone?: string;
             address?: string;
             notes?: string;
@@ -178,11 +178,11 @@ export interface components {
             date_of_birth?: string;
             notes?: string;
         };
+        /** @description Fields left out are unchanged. An empty string clears an optional field, which is then absent from the dog. */
         UpdateDogRequest: {
             name?: string;
             breed?: string;
-            /** Format: date */
-            date_of_birth?: string;
+            date_of_birth?: string | unknown | unknown;
             notes?: string;
         };
     };
@@ -207,6 +207,15 @@ export interface components {
         };
         /** @description No such dog for this walker. */
         DogNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description A dog to be removed is booked on an open walk (error_code dog_has_open_walks). */
+        DogHasOpenWalks: {
             headers: {
                 [name: string]: unknown;
             };
@@ -321,6 +330,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["ClientNotFound"];
+            409: components["responses"]["DogHasOpenWalks"];
         };
     };
     updateClient: {
@@ -462,6 +472,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["DogNotFound"];
+            409: components["responses"]["DogHasOpenWalks"];
         };
     };
     updateDog: {

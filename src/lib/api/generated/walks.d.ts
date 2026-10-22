@@ -161,6 +161,7 @@ export interface components {
             dog_ids: string[];
             notes?: string;
         };
+        /** @description Fields left out are unchanged. An empty notes clears them, so they are then absent from the walk. */
         UpdateWalkRequest: {
             /** Format: date-time */
             scheduled_at?: string;
