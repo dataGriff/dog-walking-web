@@ -27,7 +27,11 @@ export const actions: Actions = {
 			notes: patchField(data, 'notes')
 		};
 		if (body.name === '') {
-			return actionFail(400, { error_code: 'invalid_client', message: 'Name is required.' }, { form: 'update', ...body });
+			return actionFail(
+				400,
+				{ error_code: 'invalid_client', message: 'Name is required.' },
+				{ form: 'update', field: 'name', ...body }
+			);
 		}
 		const { clients } = await api(event);
 		const res = await clients.PATCH('/clients/{client_id}', {
@@ -54,6 +58,13 @@ export const actions: Actions = {
 			date_of_birth: str(data, 'date_of_birth'),
 			notes: str(data, 'notes')
 		};
+		if (!body.name) {
+			return actionFail(
+				400,
+				{ error_code: 'invalid_dog', message: 'Name is required.' },
+				{ form: 'addDog', field: 'name', ...body }
+			);
+		}
 		const { clients } = await api(event);
 		const res = await clients.POST('/dogs', { body });
 		if (res.error || !res.data) return actionFail(res.response.status, res.error, { form: 'addDog', ...body });

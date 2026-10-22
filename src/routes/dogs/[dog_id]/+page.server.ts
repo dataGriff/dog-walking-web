@@ -24,18 +24,18 @@ export const actions: Actions = {
 			notes: patchField(data, 'notes')
 		};
 		if (body.name === '') {
-			return actionFail(400, { error_code: 'invalid_dog', message: 'Name is required.' }, body);
+			return actionFail(400, { error_code: 'invalid_dog', message: 'Name is required.' }, { form: 'update', field: 'name', ...body });
 		}
 		const { clients } = await api(event);
 		const res = await clients.PATCH('/dogs/{dog_id}', { params: { path: { dog_id: event.params.dog_id } }, body });
-		if (res.error || !res.data) return actionFail(res.response.status, res.error, body);
+		if (res.error || !res.data) return actionFail(res.response.status, res.error, { form: 'update', ...body });
 		return { updated: true };
 	},
 	delete: async (event) => {
 		const { clients } = await api(event);
 		const dog = await clients.GET('/dogs/{dog_id}', { params: { path: { dog_id: event.params.dog_id } } });
 		const res = await clients.DELETE('/dogs/{dog_id}', { params: { path: { dog_id: event.params.dog_id } } });
-		if (res.response.status !== 204) return actionFail(res.response.status, res.error);
+		if (res.response.status !== 204) return actionFail(res.response.status, res.error, { form: 'delete' });
 		redirect(303, dog.data ? `/clients/${dog.data.client_id}` : '/clients');
 	}
 };
